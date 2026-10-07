@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>작은 왕국 방어대</title>
+  <style>
+    :root { --ink:#25333d; --paper:#f8f2df; --green:#4e8c63; --gold:#f4c95d; --red:#d95b52; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; color:var(--ink); font-family:system-ui, -apple-system, "Malgun Gothic", sans-serif; background:radial-gradient(circle at 50% 0%, #fff7db 0 20%, transparent 55%), #c9dfce; }
+    .game { width:min(960px, 96vw); padding:18px; border:5px solid #fff8e8; border-radius:22px; background:#345f50; box-shadow:0 18px 45px #18352b66; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:14px; margin:0 0 14px; color:#fffaf0; }
+    h1 { margin:0; font-size:clamp(21px, 3vw, 30px); letter-spacing:-1px; }
+    .stats { display:flex; gap:9px; flex-wrap:wrap; justify-content:flex-end; }
+    .stat { padding:7px 11px; border-radius:99px; background:#183e36; font-weight:800; font-size:14px; white-space:nowrap; }
+    .gold { color:#ffe184; } .health { color:#ffb2a7; }
+    .main { display:grid; grid-template-columns:minmax(0, 1fr) 170px; gap:14px; }
+    #board { position:relative; display:grid; grid-template-columns:repeat(12, 1fr); aspect-ratio:12/8; overflow:hidden; border:4px solid #234b3e; border-radius:14px; background:#79af68; box-shadow:inset 0 0 0 2px #a4d37e; user-select:none; }
+    .cell { position:relative; border:1px solid #639d5f; cursor:pointer; }
+    .cell:hover:not(.path) { background:#91c77b; }
+    .cell.path { background:#d7bd84; border-color:#c8aa70; cursor:default; }
+    .cell.path::after { content:""; position:absolute; inset:35%; border-radius:50%; background:#b89862; opacity:.45; }
+    .tower { position:absolute; z-index:3; width:72%; height:72%; left:14%; top:14%; border-radius:50% 50% 35% 35%; border:3px solid #395a6e; background:linear-gradient(135deg,#89c7e3,#4d7f9c); box-shadow:0 3px 0 #2d5268; pointer-events:none; }
+    .tower::after { content:""; position:absolute; width:56%; height:17%; left:50%; top:16%; transform:translateX(-4%); transform-origin:left center; border-radius:9px; background:#29485b; }
+    .enemy { position:absolute; z-index:5; width:26px; height:26px; margin:-13px; border:3px solid #7e3b38; border-radius:45% 45% 50% 50%; background:#e9775f; box-shadow:0 2px 0 #9f4941; transition:left .08s linear, top .08s linear; pointer-events:none; }
+    .enemy::after { content:""; position:absolute; top:7px; left:5px; width:4px; height:4px; border-radius:50%; background:#fff5df; box-shadow:8px 0 #fff5df; }
+    .hpbar { position:absolute; z-index:6; width:30px; height:5px; margin:-22px -15px; border:1px solid #513e35; border-radius:6px; background:#704c42; pointer-events:none; overflow:hidden; }
+    .hpbar i { display:block; height:100%; background:#9bed72; transition:width .15s; }
+    .shot { position:absolute; z-index:4; width:7px; height:7px; margin:-3px; border-radius:50%; background:#fff2a4; box-shadow:0 0 7px #ffda58; pointer-events:none; }
+    aside { display:flex; flex-direction:column; gap:10px; padding:14px; border-radius:14px; background:#f8f2df; }
+    aside h2 { margin:0; font-size:17px; } aside p { margin:0; font-size:13px; line-height:1.5; color:#55625d; }
+    button { border:0; border-radius:10px; padding:11px 8px; font:inherit; font-weight:800; color:#fff; background:#477f66; cursor:pointer; box-shadow:inset 0 -3px #32634e; }
+    button:hover { filter:brightness(1.09); } button:disabled { background:#9aa8a0; box-shadow:none; cursor:not-allowed; }
+    #start { background:#d56d50; box-shadow:inset 0 -3px #ae503d; }
+    .tip { margin-top:auto; padding-top:10px; border-top:1px dashed #c8bfa6; }
+    .overlay { position:absolute; z-index:10; inset:0; display:grid; place-items:center; text-align:center; color:#fff9e9; background:#193d33d9; backdrop-filter:blur(2px); }
+    .overlay[hidden] { display:none; } .overlay div { padding:24px; } .overlay h2 { margin:0 0 8px; font-size:32px; } .overlay p { margin:0 0 16px; }
+    @media (max-width:650px) { .main { grid-template-columns:1fr; } aside { display:grid; grid-template-columns:1fr 1fr; } aside h2 { grid-column:span 2; } .tip { margin:0; } }
+  </style>
+</head>
+<body>
+  <section class="game">
+    <header><h1>🏰 작은 왕국 방어대</h1><div class="stats"><span class="stat gold">🪙 골드 <b id="gold">100</b></span><span class="stat health">♥ 성 <b id="health">15</b></span><span class="stat">🌊 웨이브 <b id="wave">0</b></span></div></header>
+    <div class="main">
+      <div id="board" aria-label="게임 보드"><div id="overlay" class="overlay"><div><h2>왕국을 지켜라!</h2><p>빈 초원 칸을 눌러 타워를 설치하세요.</p><button id="begin">게임 시작</button></div></div></div>
+      <aside><h2>🔭 궁수 타워</h2><p>비용: <b>50 골드</b><br>사거리: 2.4칸<br>자동으로 가장 앞선 적을 공격합니다.</p><button id="start">웨이브 시작</button><p class="tip">적이 성에 도달하면 체력이 1 감소합니다. 처치 시 15 골드를 얻습니다.</p></aside>
+    </div>
+  </section>
+  <script>
+    const board=document.querySelector('#board'), goldEl=document.querySelector('#gold'), healthEl=document.querySelector('#health'), waveEl=document.querySelector('#wave');
+    const cols=12, rows=8, cost=50, path=[[0,3],[1,3],[2,3],[2,2],[2,1],[3,1],[4,1],[5,1],[5,2],[5,3],[6,3],[7,3],[7,4],[7,5],[8,5],[9,5],[9,4],[9,3],[10,3],[11,3]];
+    const pathSet=new Set(path.map(p=>p.join(','))); let gold=100, health=15, wave=0, towers=[], enemies=[], running=false, started=false, last=0, spawnQueue=[], spawnTimer=0;
+    function center(c,r){return {x:(c+.5)/cols*100,y:(r+.5)/rows*100};}
+    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++) { const cell=document.createElement('div'); cell.className='cell'+(pathSet.has(c+','+r)?' path':''); cell.dataset.c=c; cell.dataset.r=r; cell.onclick=()=>place(c,r,cell); board.append(cell); }
+    function update(){goldEl.textContent=gold;healthEl.textContent=health;waveEl.textContent=wave;document.querySelector('#start').disabled=running||!started;}
+    function place(c,r,cell){if(!started)return; if(pathSet.has(c+','+r)||cell.querySelector('.tower')||gold<cost)return; gold-=cost; towers.push({c,r,cool:0,el:null}); const t=document.createElement('div');t.className='tower';cell.append(t);towers.at(-1).el=t;update();}
+    function startWave(){if(running||!started||health<=0)return; wave++; running=true; spawnQueue=Array.from({length:5+wave*2},(_,i)=>({hp:34+wave*11,speed:.85+wave*.035,delay:i*.75})); spawnTimer=0; update();}
+    function spawn(data){const e={...data, maxHp:data.hp, progress:0, dead:false};e.el=document.createElement('div');e.el.className='enemy';e.bar=document.createElement('div');e.bar.className='hpbar';e.fill=document.createElement('i');e.bar.append(e.fill);board.append(e.el,e.bar);enemies.push(e);}
+    function position(e){const i=Math.floor(e.progress), f=e.progress-i, a=path[i], b=path[Math.min(i+1,path.length-1)], c=center(a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f);e.el.style.left=e.bar.style.left=c.x+'%';e.el.style.top=e.bar.style.top=c.y+'%';e.fill.style.width=(e.hp/e.maxHp*100)+'%';}
+    function shoot(t,e){t.cool=.7; const a=center(t.c,t.r), i=Math.min(Math.floor(e.progress),path.length-1), p=path[i], b=center(p[0],p[1]), s=document.createElement('i');s.className='shot';s.style.left=a.x+'%';s.style.top=a.y+'%';board.append(s); requestAnimationFrame(()=>{s.style.transition='left .12s linear, top .12s linear';s.style.left=b.x+'%';s.style.top=b.y+'%';});setTimeout(()=>s.remove(),170);e.hp-=19;if(e.hp<=0){e.dead=true;gold+=15;e.el.remove();e.bar.remove();}}
+    function loop(time){const dt=Math.min(.05,(time-last)/1000||0);last=time;if(running){spawnTimer+=dt;while(spawnQueue.length&&spawnTimer>=spawnQueue[0].delay)spawn(spawnQueue.shift());for(const e of enemies){if(e.dead)continue;e.progress+=e.speed*dt; if(e.progress>=path.length-1){e.dead=true;health--;e.el.remove();e.bar.remove();}else position(e);} enemies=enemies.filter(e=>!e.dead);for(const t of towers){t.cool-=dt;if(t.cool>0)continue;const target=enemies.filter(e=>{const p=path[Math.min(Math.floor(e.progress),path.length-1)];return Math.hypot(t.c-p[0],t.r-p[1])<2.45;}).sort((a,b)=>b.progress-a.progress)[0];if(target)shoot(t,target);}if(health<=0){running=false;gameOver();} else if(!spawnQueue.length&&!enemies.length){running=false;}update();}requestAnimationFrame(loop);}
+    function gameOver(){const o=document.querySelector('#overlay');o.hidden=false;o.innerHTML='<div><h2>게임 오버</h2><p>성문이 무너졌습니다. 도달한 웨이브: '+wave+'</p><button onclick="location.reload()">다시 도전</button></div>';}
+    document.querySelector('#begin').onclick=()=>{started=true;document.querySelector('#overlay').hidden=true;update();};document.querySelector('#start').onclick=startWave;update();requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
